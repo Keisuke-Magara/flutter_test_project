@@ -1,0 +1,60 @@
+# Workflow for deploying contents of Sosaku for web to GitHub Pages
+name: Flutter for web
+
+on:
+  # Triggered from Codemagic workflow or contributors.
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+    user:
+      description: 'Your GitHub user name'
+      required: true
+      type: string
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
+#      - name: Repository
+#        id: version
+#        run: |
+#          REPOSITORY=$(echo ${{ github.repository }} | sed -e "s#.*/##")
+#          echo ::set-output name=repository::$REPOSITORY
+      - name: Install Flutter latest environment
+        uses: subosito/flutter-action@v2
+        with:
+          # flutter-version: '3.3.4'
+          channel: 'stable'
+          cache: false
+      - name: Pre-build process
+        run: |
+          flutter doctor -v
+          flutter pub get
+      - name: Build Flutter project
+        # If you use default URL (do not use custom domain), --base-href option is required.
+        run: flutter build web --release --build-number=${{ github.event.client_payload.build_number }} --web-renderer canvaskit --base-href /${{ steps.version.outputs.repository }}/
+      - name: Upload artifacts to GitHub Pages
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: './build/web'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
